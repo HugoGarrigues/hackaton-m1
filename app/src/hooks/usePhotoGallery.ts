@@ -43,6 +43,20 @@ export function usePhotoGallery() {
     loadSaved();
   }, []);
 
+  const deletePhoto = async (photo: UserPhoto) => {
+  const newPhotos = photos.filter((p) => p.filepath !== photo.filepath);
+  await Preferences.set({
+    key: PHOTO_STORAGE,
+    value: JSON.stringify(newPhotos),
+  });
+  await Filesystem.deleteFile({
+    path: photo.filepath,
+    directory: Directory.Data,
+  });
+  setPhotos(newPhotos);
+};
+
+
   const takePhoto = async () => {
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.Uri,
@@ -59,7 +73,8 @@ export function usePhotoGallery() {
   return {
     photos,
     takePhoto,
-    savePicture
+    savePicture,
+    deletePhoto
   };
 
 }
