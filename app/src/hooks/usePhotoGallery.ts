@@ -7,15 +7,31 @@ import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 
 export function usePhotoGallery() {
+  const [photos, setPhotos] = useState<UserPhoto[]>([]);
   const takePhoto = async () => {
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.Uri,
       source: CameraSource.Camera,
       quality: 100,
     });
+    const fileName = Date.now() + '.jpeg';
+    const newPhotos = [
+    {
+        filepath: fileName,
+        webviewPath: photo.webPath,
+    },
+    ...photos,
+    ];
+    setPhotos(newPhotos);
   };
 
-  return {
+    return {
+    photos,
     takePhoto,
-  };
+    };
+}
+
+export interface UserPhoto {
+  filepath: string;
+  webviewPath?: string;
 }
