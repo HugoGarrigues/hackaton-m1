@@ -119,15 +119,39 @@ const Tab1: React.FC = () => {
             </IonToolbar>
           </IonHeader>
 
-          <IonContent className="modal-content">
-            <div className="modal-img-wrap">
-              {currentPhoto ? (
-                <IonImg className="fullscreen-img" src={currentPhoto.webviewPath} />
-              ) : (
-                <div>Aucune image</div>
-              )}
-            </div>
-          </IonContent>
+ <IonContent className="modal-content">
+  <div 
+    className="modal-img-wrap"
+    style={{
+      display: 'flex',
+      flexDirection: 'column', // image au dessus, texte en dessous
+      alignItems: 'center',    // centre horizontalement
+      justifyContent: 'center',
+      height: '100%',
+    }}
+  >
+    {currentPhoto ? (
+      <>
+        <IonImg 
+          className="fullscreen-img" 
+          src={currentPhoto.webviewPath} 
+          style={{ maxWidth: '100%', maxHeight: '80%', marginBottom: 4 }}
+        />
+        <p style={{
+          color: '#fff',
+          fontSize: '0.9rem',
+          textAlign: 'center',
+          margin: 0,
+          padding: 0
+        }}>
+          {currentPhoto.date ? new Date(currentPhoto.date).toLocaleString() : ''}
+        </p>
+      </>
+    ) : (
+      <div>Aucune image</div>
+    )}
+  </div>
+</IonContent>
 
           <IonFooter>
             <IonToolbar>

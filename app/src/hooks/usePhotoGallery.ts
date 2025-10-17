@@ -22,6 +22,7 @@ export function usePhotoGallery() {
       filepath: fileName,
       webviewPath: photo.webPath,
       liked: false,
+      date: new Date().toISOString(),
     };
   };
 
@@ -84,6 +85,7 @@ export interface UserPhoto {
   filepath: string;
   webviewPath?: string;
   liked?: boolean;
+  date?: string;
 }
 
 export async function base64FromPath(path: string): Promise<string> {
