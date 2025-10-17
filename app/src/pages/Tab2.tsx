@@ -5,7 +5,6 @@ import { usePhotoGallery } from '../hooks/usePhotoGallery';
 import './Tab2.css'; 
 import "mapbox-gl/dist/mapbox-gl.css";
 
-// ton token Mapbox
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaGdycyIsImEiOiJjbWd0NjRiMG4wMHpzMmtxa2J6Z3ZmZDU2In0.DMtbtG-18hAPyVn6gon5xw';
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -36,14 +35,11 @@ const Tab2: React.FC = () => {
 
     return () => {
       clearTimeout(timer);
-      // remove HTML markers if any
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       map.current?.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // update GeoJSON source when photos change; create source & layers on first load
   useEffect(() => {
     if (!map.current) return;
 
@@ -80,7 +76,6 @@ const Tab2: React.FC = () => {
         clusterRadius: 50,
       } as any);
 
-      // cluster circles
       mapRef.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -94,7 +89,6 @@ const Tab2: React.FC = () => {
         },
       } as any);
 
-      // cluster count labels
       mapRef.addLayer({
         id: 'cluster-count',
         type: 'symbol',
@@ -110,7 +104,6 @@ const Tab2: React.FC = () => {
         },
       } as any);
 
-      // unclustered points
       mapRef.addLayer({
         id: 'unclustered-point',
         type: 'circle',
@@ -124,9 +117,7 @@ const Tab2: React.FC = () => {
         },
       } as any);
 
-      // helper to create HTML markers for unclustered points
       const updateUnclusteredMarkers = () => {
-        // clear previous markers
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
 
@@ -141,24 +132,20 @@ const Tab2: React.FC = () => {
           const marker = new mapboxgl.Marker({ element: el })
             .setLngLat(coords)
             .addTo(mapRef);
-          // attach popup
             const html = `<div style="max-width:300px"><img class="popup-photo" src="${props.webviewPath}" style="width:100%;height:auto;border-radius:6px"/><div class="photo-info">${props.date ? new Date(props.date).toLocaleString() : ''}</div></div>`;
           marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html));
           markersRef.current.push(marker);
         }
       };
 
-      // click handlers
       mapRef.on('click', 'clusters', (e) => {
         const features = mapRef.queryRenderedFeatures(e.point, { layers: ['clusters'] });
         if (!features.length) return;
         const clusterId = features[0].properties?.cluster_id;
         if (clusterId == null) return;
 
-        // @ts-ignore use any for cluster methods
         (mapRef.getSource(sourceId) as any).getClusterLeaves(clusterId, 100, 0, (err: any, leaves: any[]) => {
           if (err) return;
-          // leaves are features; build a simple carousel popup
           const imgs = leaves.map((l) => ({
             src: l.properties.webviewPath,
             date: l.properties.date,
@@ -239,14 +226,11 @@ const Tab2: React.FC = () => {
         mapRef.getCanvas().style.cursor = '';
       });
     } else {
-      // update data
       (mapRef.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson as any);
-      // refresh HTML markers because cluster state may have changed
-      // small timeout to allow style update
+
       setTimeout(() => {
         try {
           const unclustered = mapRef.queryRenderedFeatures({ layers: ['unclustered-point'] });
-          // call same logic: remove previous markers and create new ones
           markersRef.current.forEach((m) => m.remove());
           markersRef.current = [];
           for (const f of unclustered as any[]) {
@@ -269,12 +253,9 @@ const Tab2: React.FC = () => {
             markersRef.current.push(marker);
           }
         } catch (e) {
-          // ignore transient errors
         }
       }, 50);
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos]);
 
   return (
