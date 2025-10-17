@@ -54,6 +54,11 @@ export function usePhotoGallery() {
     await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
     await Filesystem.deleteFile({ path: photo.filepath, directory: Directory.Data });
     setPhotos(newPhotos);
+    try {
+      window.dispatchEvent(new CustomEvent('photosUpdated', { detail: newPhotos }));
+    } catch (e) {
+      // ignore if window not available
+    }
   };
 
   const toggleLike = async (photo: UserPhoto) => {
@@ -62,6 +67,11 @@ export function usePhotoGallery() {
     );
     setPhotos(updatedPhotos);
     await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(updatedPhotos) });
+    try {
+      window.dispatchEvent(new CustomEvent('photosUpdated', { detail: updatedPhotos }));
+    } catch (e) {
+      // ignore
+    }
   };
 
   const takePhoto = async () => {
@@ -84,6 +94,11 @@ export function usePhotoGallery() {
     const newPhotos = [savedFileImage, ...photos];
     setPhotos(newPhotos);
     await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
+    try {
+      window.dispatchEvent(new CustomEvent('photosUpdated', { detail: newPhotos }));
+    } catch (e) {
+      // ignore
+    }
   };
 
   return {

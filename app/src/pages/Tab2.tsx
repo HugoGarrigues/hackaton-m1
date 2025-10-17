@@ -258,6 +258,65 @@ const Tab2: React.FC = () => {
     }
   }, [photos]);
 
+  // Listen for global photosUpdated event so map refreshes when photos change elsewhere
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as any[] | undefined;
+      const currentPhotos = detail ?? photos;
+      if (!map.current) return;
+      const mapRef = map.current;
+      const sourceId = 'photos';
+
+      const features = (currentPhotos || [])
+        .filter((p: any) => p.location)
+        .map((p: any, idx: number) => ({
+          type: 'Feature',
+          properties: { id: idx, webviewPath: p.webviewPath, date: p.date },
+          geometry: { type: 'Point', coordinates: [p.location!.lon, p.location!.lat] },
+        }));
+
+      const geojson = { type: 'FeatureCollection', features } as GeoJSON.FeatureCollection<GeoJSON.Point>;
+
+      try {
+        const src = mapRef.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined;
+        if (src) {
+          src.setData(geojson as any);
+        } else {
+          // if source missing, create it and layers will be added by the existing effect when photos changes
+          mapRef.addSource(sourceId, { type: 'geojson', data: geojson, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 } as any);
+        }
+        // refresh markers
+        // call the same marker update by dispatching a tiny timeout to allow map to render
+        setTimeout(() => {
+          try {
+            const unclustered = mapRef.queryRenderedFeatures({ layers: ['unclustered-point'] }) as any[];
+            markersRef.current.forEach((m) => m.remove());
+            markersRef.current = [];
+            for (const f of unclustered) {
+              const coords = (f.geometry as any).coordinates.slice();
+              const props = f.properties || {};
+              const el = document.createElement('div');
+              el.className = 'photo-marker small';
+              el.style.backgroundImage = `url(${props.webviewPath})`;
+              const marker = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(mapRef);
+              const html = `<div style="max-width:300px"><img class="popup-photo" src="${props.webviewPath}" style="width:100%;height:auto;border-radius:6px"/><div class="photo-info">${props.date ? new Date(props.date).toLocaleString() : ''}</div></div>`;
+              marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html));
+              markersRef.current.push(marker);
+            }
+          } catch (err) {
+            // ignore transient
+          }
+        }, 50);
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    window.addEventListener('photosUpdated', handler as EventListener);
+    return () => window.removeEventListener('photosUpdated', handler as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos]);
+
   return (
     <IonPage>
       <IonHeader>
