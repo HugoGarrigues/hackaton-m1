@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
 import { isPlatform } from '@ionic/react';
-
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 
 const PHOTO_STORAGE = 'photos';
-export function usePhotoGallery() {
 
+export function usePhotoGallery() {
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
 
   const savePicture = async (photo: Photo, fileName: string): Promise<UserPhoto> => {
     const base64Data = await base64FromPath(photo.webPath!);
-    const savedFile = await Filesystem.writeFile({
+    await Filesystem.writeFile({
       path: fileName,
       data: base64Data,
       directory: Directory.Data,
@@ -22,6 +21,7 @@ export function usePhotoGallery() {
     return {
       filepath: fileName,
       webviewPath: photo.webPath,
+      liked: false,
     };
   };
 
@@ -35,7 +35,6 @@ export function usePhotoGallery() {
           path: photo.filepath,
           directory: Directory.Data,
         });
-        // Web platform only: Load the photo as base64 data
         photo.webviewPath = `data:image/jpeg;base64,${file.data}`;
       }
       setPhotos(photosInPreferences);
@@ -44,18 +43,19 @@ export function usePhotoGallery() {
   }, []);
 
   const deletePhoto = async (photo: UserPhoto) => {
-  const newPhotos = photos.filter((p) => p.filepath !== photo.filepath);
-  await Preferences.set({
-    key: PHOTO_STORAGE,
-    value: JSON.stringify(newPhotos),
-  });
-  await Filesystem.deleteFile({
-    path: photo.filepath,
-    directory: Directory.Data,
-  });
-  setPhotos(newPhotos);
-};
+    const newPhotos = photos.filter((p) => p.filepath !== photo.filepath);
+    await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
+    await Filesystem.deleteFile({ path: photo.filepath, directory: Directory.Data });
+    setPhotos(newPhotos);
+  };
 
+  const toggleLike = async (photo: UserPhoto) => {
+    const updatedPhotos = photos.map((p) =>
+      p.filepath === photo.filepath ? { ...p, liked: !p.liked } : p
+    );
+    setPhotos(updatedPhotos);
+    await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(updatedPhotos) });
+  };
 
   const takePhoto = async () => {
     const photo = await Camera.getPhoto({
@@ -70,18 +70,20 @@ export function usePhotoGallery() {
     setPhotos(newPhotos);
     Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
   };
+
   return {
     photos,
     takePhoto,
     savePicture,
-    deletePhoto
+    deletePhoto,
+    toggleLike,
   };
-
 }
 
 export interface UserPhoto {
   filepath: string;
   webviewPath?: string;
+  liked?: boolean;
 }
 
 export async function base64FromPath(path: string): Promise<string> {
