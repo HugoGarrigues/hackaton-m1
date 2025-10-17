@@ -1,6 +1,7 @@
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
 import mapboxgl from 'mapbox-gl';
 import { useEffect, useRef } from 'react';
+import { usePhotoGallery } from '../hooks/usePhotoGallery';
 import './Tab2.css'; 
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -11,6 +12,9 @@ mapboxgl.accessToken = MAPBOX_TOKEN;
 const Tab2: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+
+  const { photos } = usePhotoGallery();
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -32,9 +36,246 @@ const Tab2: React.FC = () => {
 
     return () => {
       clearTimeout(timer);
+      // remove HTML markers if any
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
       map.current?.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // update GeoJSON source when photos change; create source & layers on first load
+  useEffect(() => {
+    if (!map.current) return;
+
+    const features = photos
+      .filter((p) => p.location)
+      .map((p, idx) => ({
+        type: 'Feature',
+        properties: {
+          id: idx,
+          webviewPath: p.webviewPath,
+          date: p.date,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [p.location!.lon, p.location!.lat],
+        },
+      }));
+
+    const geojson = {
+      type: 'FeatureCollection',
+      features,
+    } as GeoJSON.FeatureCollection<GeoJSON.Point>;
+
+    const sourceId = 'photos';
+
+    const mapRef = map.current;
+
+  if (!mapRef.getSource(sourceId)) {
+      mapRef.addSource(sourceId, {
+        type: 'geojson',
+        data: geojson,
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
+      } as any);
+
+      // cluster circles
+      mapRef.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: sourceId,
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#00ff80',
+          'circle-radius': ['step', ['get', 'point_count'], 20, 5, 25, 10, 30],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff',
+        },
+      } as any);
+
+      // cluster count labels
+      mapRef.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: sourceId,
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#000',
+        },
+      } as any);
+
+      // unclustered points
+      mapRef.addLayer({
+        id: 'unclustered-point',
+        type: 'circle',
+        source: sourceId,
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#51bbd6',
+          'circle-radius': 8,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff',
+        },
+      } as any);
+
+      // helper to create HTML markers for unclustered points
+      const updateUnclusteredMarkers = () => {
+        // clear previous markers
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current = [];
+
+        const unclustered = mapRef.queryRenderedFeatures({ layers: ['unclustered-point'] }) as any[];
+        for (const f of unclustered) {
+          const coords = (f.geometry as any).coordinates.slice();
+          const props = f.properties || {};
+          const el = document.createElement('div');
+          el.className = 'photo-marker small';
+          el.style.backgroundImage = `url(${props.webviewPath})`;
+
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat(coords)
+            .addTo(mapRef);
+          // attach popup
+            const html = `<div style="max-width:300px"><img class="popup-photo" src="${props.webviewPath}" style="width:100%;height:auto;border-radius:6px"/><div class="photo-info">${props.date ? new Date(props.date).toLocaleString() : ''}</div></div>`;
+          marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html));
+          markersRef.current.push(marker);
+        }
+      };
+
+      // click handlers
+      mapRef.on('click', 'clusters', (e) => {
+        const features = mapRef.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        if (!features.length) return;
+        const clusterId = features[0].properties?.cluster_id;
+        if (clusterId == null) return;
+
+        // @ts-ignore use any for cluster methods
+        (mapRef.getSource(sourceId) as any).getClusterLeaves(clusterId, 100, 0, (err: any, leaves: any[]) => {
+          if (err) return;
+          // leaves are features; build a simple carousel popup
+          const imgs = leaves.map((l) => ({
+            src: l.properties.webviewPath,
+            date: l.properties.date,
+          }));
+
+          let idx = 0;
+          const container = document.createElement('div');
+          container.className = 'cluster-popup';
+
+          const imgEl = document.createElement('img');
+          imgEl.className = 'popup-photo';
+          imgEl.src = imgs[0].src || '';
+
+          const info = document.createElement('div');
+          info.className = 'photo-info';
+          info.textContent = imgs[0].date ? new Date(imgs[0].date).toLocaleString() : '';
+
+          const controls = document.createElement('div');
+          controls.className = 'controls';
+          controls.style.marginTop = '6px';
+
+          const prev = document.createElement('button');
+          prev.className = 'cluster-btn';
+          prev.textContent = '◀';
+          const next = document.createElement('button');
+          next.className = 'cluster-btn';
+          next.textContent = '▶';
+
+          prev.onclick = () => {
+            idx = (idx - 1 + imgs.length) % imgs.length;
+            imgEl.src = imgs[idx].src || '';
+            info.textContent = imgs[idx].date ? new Date(imgs[idx].date).toLocaleString() : '';
+          };
+          next.onclick = () => {
+            idx = (idx + 1) % imgs.length;
+            imgEl.src = imgs[idx].src || '';
+            info.textContent = imgs[idx].date ? new Date(imgs[idx].date).toLocaleString() : '';
+          };
+
+          controls.appendChild(prev);
+          controls.appendChild(next);
+
+          container.appendChild(imgEl);
+          info.className = 'photo-info';
+          container.appendChild(info);
+          container.appendChild(controls);
+
+          const coordinates = (features[0].geometry as any).coordinates.slice();
+          new mapboxgl.Popup({ offset: 25 }).setDOMContent(container).setLngLat(coordinates).addTo(mapRef);
+        });
+      });
+
+      mapRef.on('click', 'unclustered-point', (e) => {
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+        const props = feature.properties || {};
+          const html = `<div style="max-width:300px"><img class="popup-photo" src="${props.webviewPath}" style="width:100%;height:auto;border-radius:6px"/><div class="photo-info">${props.date ? new Date(props.date).toLocaleString() : ''}</div></div>`;
+        const coords = (feature.geometry as any).coordinates.slice();
+        new mapboxgl.Popup({ offset: 25 }).setLngLat(coords).setHTML(html).addTo(mapRef);
+      });
+
+      // update HTML markers initially and when viewport changes (cluster state can change)
+      updateUnclusteredMarkers();
+      mapRef.on('moveend', updateUnclusteredMarkers);
+      mapRef.on('zoomend', updateUnclusteredMarkers);
+
+      // change cursor
+      mapRef.on('mouseenter', 'clusters', () => {
+        mapRef.getCanvas().style.cursor = 'pointer';
+      });
+      mapRef.on('mouseleave', 'clusters', () => {
+        mapRef.getCanvas().style.cursor = '';
+      });
+      mapRef.on('mouseenter', 'unclustered-point', () => {
+        mapRef.getCanvas().style.cursor = 'pointer';
+      });
+      mapRef.on('mouseleave', 'unclustered-point', () => {
+        mapRef.getCanvas().style.cursor = '';
+      });
+    } else {
+      // update data
+      (mapRef.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson as any);
+      // refresh HTML markers because cluster state may have changed
+      // small timeout to allow style update
+      setTimeout(() => {
+        try {
+          const unclustered = mapRef.queryRenderedFeatures({ layers: ['unclustered-point'] });
+          // call same logic: remove previous markers and create new ones
+          markersRef.current.forEach((m) => m.remove());
+          markersRef.current = [];
+          for (const f of unclustered as any[]) {
+            const coords = (f.geometry as any).coordinates.slice();
+            const props = f.properties || {};
+            const el = document.createElement('div');
+            el.className = 'photo-marker';
+            el.style.width = '36px';
+            el.style.height = '36px';
+            el.style.backgroundImage = `url(${props.webviewPath})`;
+            el.style.backgroundSize = 'cover';
+            el.style.borderRadius = '50%';
+            el.style.border = '2px solid white';
+
+            const marker = new mapboxgl.Marker({ element: el })
+              .setLngLat(coords)
+              .addTo(mapRef);
+            const html = `<div style="max-width:240px"><img src="${props.webviewPath}" style="width:100%;height:auto;border-radius:6px"/><div style="font-size:12px;margin-top:6px">${props.date ? new Date(props.date).toLocaleString() : ''}</div></div>`;
+            marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html));
+            markersRef.current.push(marker);
+          }
+        } catch (e) {
+          // ignore transient errors
+        }
+      }, 50);
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos]);
 
   return (
     <IonPage>

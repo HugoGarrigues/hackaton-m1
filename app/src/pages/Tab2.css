@@ -1,0 +1,131 @@
+/* Marker showing a photo thumbnail */
+.photo-marker {
+	width: 32px;
+	height: 32px;
+	background-color: #666;
+	background-position: center;
+	background-size: cover;
+	border-radius: 50%;
+	border: 2px solid #fff;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.mapboxgl-popup-content img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.cluster-popup button {
+	background: #fff;
+	border: 0;
+	border-radius: 6px;
+	padding: 6px 10px;
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	font-weight: 600;
+}
+
+.cluster-popup button:active {
+	transform: translateY(1px);
+}
+
+/* Popup main layout */
+.mapboxgl-popup-content {
+	display: inline-block; /* shrink to content */
+	padding: 6px 8px;
+	background: #111; /* dark background fits the app style */
+	color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+	line-height: 1;
+}
+
+.mapboxgl-popup-content img {
+	border-radius: 6px;
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* Info text under image */
+.mapboxgl-popup-content .photo-info {
+	margin-top: 8px;
+	font-size: 12px;
+	color: #000;
+}
+
+/* Make the popup arrow (tip) match the popup background and have a subtle border */
+.mapboxgl-popup-tip {
+	color: #111; /* tip color follows background */
+	filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+/* Cluster popup controls container */
+.cluster-popup {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.cluster-popup .controls {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 6px;
+}
+
+.cluster-popup .controls button {
+	flex: 1 1 auto;
+	background: #666666;
+}
+
+/* Map container sizing moved from inline styles */
+.map-container {
+	width: 100%;
+	height: 100%;
+	min-height: 100vh;
+}
+
+/* Popup image */
+.popup-photo {
+	width: 100%;
+	height: auto;
+	border-radius: 6px;
+	display: block;
+}
+
+/* Photo marker (slightly larger than default) */
+.photo-marker.small {
+	width: 36px;
+	height: 36px;
+}
+
+/* Ensure the photo-info text is black (as requested) */
+.photo-info {
+	color: #000;
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+/* ensure popup contents are responsive */
+@media (max-width: 420px) {
+	.mapboxgl-popup-content {
+		width: 220px;
+	}
+}
+
+/* Gray cluster button */
+.cluster-btn {
+	background: #e0e0e0;
+	color: #333;
+	border: 1px solid #cfcfcf;
+	padding: 6px 10px;
+	border-radius: 6px;
+	font-weight: 700;
+}
+
+.cluster-btn:active {
+	transform: translateY(1px);
+}
+
