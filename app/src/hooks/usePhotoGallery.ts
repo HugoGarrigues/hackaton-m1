@@ -4,13 +4,18 @@ import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 const PHOTO_STORAGE = 'photos';
 
 export function usePhotoGallery() {
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
 
-  const savePicture = async (photo: Photo, fileName: string): Promise<UserPhoto> => {
+  const savePicture = async (
+    photo: Photo,
+    fileName: string,
+    location?: { lat: number; lon: number }
+  ): Promise<UserPhoto> => {
     const base64Data = await base64FromPath(photo.webPath!);
     await Filesystem.writeFile({
       path: fileName,
@@ -23,6 +28,7 @@ export function usePhotoGallery() {
       webviewPath: photo.webPath,
       liked: false,
       date: new Date().toISOString(),
+      location,
     };
   };
 
@@ -65,11 +71,19 @@ export function usePhotoGallery() {
       quality: 100,
     });
 
+    let location;
+    try {
+      const position = await Geolocation.getCurrentPosition();
+      location = { lat: position.coords.latitude, lon: position.coords.longitude };
+    } catch (e) {
+      console.warn('Impossible de récupérer la position GPS', e);
+    }
+
     const fileName = Date.now() + '.jpeg';
-    const savedFileImage = await savePicture(photo, fileName);
+    const savedFileImage = await savePicture(photo, fileName, location);
     const newPhotos = [savedFileImage, ...photos];
     setPhotos(newPhotos);
-    Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
+    await Preferences.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
   };
 
   return {
@@ -78,6 +92,7 @@ export function usePhotoGallery() {
     savePicture,
     deletePhoto,
     toggleLike,
+    location: Geolocation,
   };
 }
 
@@ -86,6 +101,7 @@ export interface UserPhoto {
   webviewPath?: string;
   liked?: boolean;
   date?: string;
+  location?: { lat: number; lon: number };
 }
 
 export async function base64FromPath(path: string): Promise<string> {

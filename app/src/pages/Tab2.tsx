@@ -2,6 +2,7 @@ import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/rea
 import mapboxgl from 'mapbox-gl';
 import { useEffect, useRef } from 'react';
 import './Tab2.css'; 
+import "mapbox-gl/dist/mapbox-gl.css";
 
 // ton token Mapbox
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaGdycyIsImEiOiJjbWd0NjRiMG4wMHpzMmtxa2J6Z3ZmZDU2In0.DMtbtG-18hAPyVn6gon5xw';

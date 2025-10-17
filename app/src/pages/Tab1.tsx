@@ -124,8 +124,8 @@ const Tab1: React.FC = () => {
               className="modal-img-wrap"
               style={{
                 display: 'flex',
-                flexDirection: 'column', // image au dessus, texte en dessous
-                alignItems: 'center',    // centre horizontalement
+                flexDirection: 'column', 
+                alignItems: 'center',   
                 justifyContent: 'center',
                 height: '100%',
               }}
@@ -146,10 +146,22 @@ const Tab1: React.FC = () => {
                   }}>
                     {currentPhoto.date ? new Date(currentPhoto.date).toLocaleString() : ''}
                   </p>
+                  {currentPhoto.location && (
+                    <p style={{
+                      color: '#fff',
+                      fontSize: '0.8rem',
+                      textAlign: 'center',
+                      margin: 0,
+                      padding: 0
+                    }}>
+                      Latitude: {currentPhoto.location.lat.toFixed(6)}, Longitude: {currentPhoto.location.lon.toFixed(6)}
+                    </p>
+                  )}
                 </>
               ) : (
                 <div>Aucune image</div>
               )}
+
             </div>
           </IonContent>
 
