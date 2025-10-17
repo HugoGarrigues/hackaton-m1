@@ -1,6 +1,6 @@
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
 import mapboxgl from 'mapbox-gl';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePhotoGallery } from '../hooks/usePhotoGallery';
 import './Tab2.css'; 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -12,6 +12,7 @@ const Tab2: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   const { photos } = usePhotoGallery();
 
@@ -29,6 +30,10 @@ const Tab2: React.FC = () => {
       });
 
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      map.current.on('load', () => {
+        setIsMapReady(true);
+      });
 
       map.current.resize();
     }, 50);
@@ -326,14 +331,14 @@ const Tab2: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        <div
-          ref={mapContainer}
-          style={{
-            width: '100%',
-            height: '100%',
-            minHeight: '100vh',
-          }}
-        />
+        <div style={{ position: 'relative' }}>
+          {!isMapReady && (
+            <div className="map-loader">
+              <div className="spinner" />
+            </div>
+          )}
+          <div ref={mapContainer} className="map-container" />
+        </div>
       </IonContent>
     </IonPage>
   );
